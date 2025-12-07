@@ -513,7 +513,7 @@ client.once("clientReady", async () => {
     ],
     status: "online",
   });
-  console.log(`🎮 Status set: Managing SPY Group (SGI)`);
+  console.log(`🎮 Status set: Serving LilaMC`);
 
   // Check for pending override codes on startup
   checkAndSendPendingOverrideCodes();
