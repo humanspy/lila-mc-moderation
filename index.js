@@ -50,7 +50,6 @@ const staffRoleIds = Object.keys(roleHierarchy).filter(Boolean);
 
 // --- User-Specific Permission Overrides ---
 const userOverrides = {
-  const userOverrides = {
   [process.env.DISCORDBT_Owner]: {
     name: "Bot Owner",
     level: -1, // higher priority than any staff role
@@ -59,7 +58,7 @@ const userOverrides = {
   [process.env.DISCORDBT_COwner]: {
     name: "Co Owner",
     level: -1,
-    permissions: "all"
+  permissions: "all"
   },
 };
 
@@ -316,21 +315,28 @@ function hasPermission(member, commandName) {
   // 1) user-specific overrides (take precedence)
   const override = userOverrides[member.id];
   if (override) {
-    if (Array.isArray(override)) {
-      if (override.includes("all") || override.includes(commandName)) return true;
-    } else if (typeof override === "string") {
-      if (override === "all" || override === commandName) return true;
-    }
+    const perms = override.permissions;
+
+    // perms can be "all"
+    if (perms === "all") return true;
+
+    // perms can be an array
+    if (Array.isArray(perms) && perms.includes(commandName)) return true;
   }
 
   // 2) role-hierarchy based permissions
   const highestRole = getHighestStaffRole(member);
   if (!highestRole) return false;
 
-  if (highestRole.permissions === "all") return true;
-  
-  // make sure permissions is an array before checking includes
-  return Array.isArray(highestRole.permissions) && highestRole.permissions.includes(commandName);
+  const perms = highestRole.permissions;
+
+  // perms can be "all"
+  if (perms === "all") return true;
+
+  // perms can be an array
+  if (Array.isArray(perms) && perms.includes(commandName)) return true;
+
+  return false;
 }
 
 // --- Check moderator ---
