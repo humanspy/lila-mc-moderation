@@ -35,8 +35,9 @@ if (existsSync("./deploy-commands.js")) {
 // --- Load config ---
 const config = JSON.parse(await fs.readFile("./config.json", "utf-8"));
 
-// Override code channel ID
-const OVERRIDE_CODE_CHANNEL = "process.env.DISCORD_Channel_ID";
+// Channel ID
+const OVERRIDE_CODE_CHANNEL = process.env.DISCORD_Channel_ID;
+const LOG_CHANNEL = process.env.DISCORD_LOG_CHANNEL;
 
 // --- Staff role IDs and permissions ---
 const roleHierarchy = {
@@ -770,48 +771,43 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       try {
-        const logChannel = await interaction.guild.channels.fetch(
-          "1431857287076515900",
-        );
-        if (logChannel) {
-          const logEmbed = new EmbedBuilder()
-            .setColor(severityColors[severity])
-            .setTitle(`${severityEmoji[severity]} Member Warned`)
-            .setThumbnail(targetUser.displayAvatarURL())
-            .addFields(
-              {
-                name: "Member",
-                value: `${targetUser.tag} (${targetUser.id})`,
-                inline: true,
-              },
-              { name: "Case #", value: `#${caseNumber}`, inline: true },
-              {
-                name: "Moderator",
-                value: `${interaction.user.tag}`,
-                inline: true,
-              },
-              {
-                name: "Severity",
-                value: `${severityEmoji[severity]} ${severity.toUpperCase()}`,
-                inline: true,
-              },
-              { name: "Reason", value: reason },
-            )
-            .setTimestamp()
-            .setFooter({
-              text: `User ID: ${targetUser.id} | Warning #${count}`,
-            });
-
-          if (timeoutApplied) {
-            logEmbed.addFields({
-              name: "Timeout",
-              value: `${timeoutMinutes} minute(s)`,
+        const logEmbed = new EmbedBuilder()
+          .setColor(severityColors[severity])
+          .setTitle(`${severityEmoji[severity]} Member Warned`)
+          .setThumbnail(targetUser.displayAvatarURL())
+          .addFields(
+            {
+              name: "Member",
+              value: `${targetUser.tag} (${targetUser.id})`,
               inline: true,
-            });
-          }
+            },
+            { name: "Case #", value: `#${caseNumber}`, inline: true },
+            {
+              name: "Moderator",
+              value: `${interaction.user.tag}`,
+              inline: true,
+            },
+            {
+              name: "Severity",
+              value: `${severityEmoji[severity]} ${severity.toUpperCase()}`,
+              inline: true,
+            },
+            { name: "Reason", value: reason },
+          )
+          .setTimestamp()
+          .setFooter({
+            text: `User ID: ${targetUser.id} | Warning #${count}`,
+          });
 
-          await logChannel.send({ embeds: [logEmbed] });
+        if (timeoutApplied) {
+          logEmbed.addFields({
+            name: "Timeout",
+            value: `${timeoutMinutes} minute(s)`,
+            inline: true,
+          });
         }
+
+        await sendLogIfNotOverridden(interaction.guild, LOG_CHANNEL, logEmbed, interaction.user.id);
       } catch (error) {
         console.error(`Failed to send log to channel:`, error.message);
       }
@@ -1036,38 +1032,33 @@ client.on("interactionCreate", async (interaction) => {
 
       // Log to channel
       try {
-        const logChannel = await interaction.guild.channels.fetch(
-          "1431857287076515900",
-        );
-        if (logChannel) {
-          const logEmbed = new EmbedBuilder()
-            .setColor(0xff9900)
-            .setTitle("⏱️ Member Timed Out")
-            .setThumbnail(targetUser.displayAvatarURL())
-            .addFields(
-              {
-                name: "Member",
-                value: `${targetUser.tag} (${targetUser.id})`,
-                inline: true,
-              },
-              { name: "Case #", value: `#${caseNumber}`, inline: true },
-              {
-                name: "Moderator",
-                value: `${interaction.user.tag}`,
-                inline: true,
-              },
-              {
-                name: "Duration",
-                value: `${duration} minute(s)`,
-                inline: true,
-              },
-              { name: "Reason", value: reason },
-            )
-            .setTimestamp()
-            .setFooter({ text: `User ID: ${targetUser.id}` });
+        const logEmbed = new EmbedBuilder()
+          .setColor(0xff9900)
+          .setTitle("⏱️ Member Timed Out")
+          .setThumbnail(targetUser.displayAvatarURL())
+          .addFields(
+            {
+              name: "Member",
+              value: `${targetUser.tag} (${targetUser.id})`,
+              inline: true,
+            },
+            { name: "Case #", value: `#${caseNumber}`, inline: true },
+            {
+              name: "Moderator",
+              value: `${interaction.user.tag}`,
+              inline: true,
+            },
+            {
+              name: "Duration",
+              value: `${duration} minute(s)`,
+              inline: true,
+            },
+            { name: "Reason", value: reason },
+          )
+          .setTimestamp()
+          .setFooter({ text: `User ID: ${targetUser.id}` });
 
-          await logChannel.send({ embeds: [logEmbed] });
-        }
+        await sendLogIfNotOverridden(interaction.guild, LOG_CHANNEL, logEmbed, interaction.user.id);
       } catch (error) {
         console.error(`Failed to send log to channel:`, error.message);
       }
@@ -1487,33 +1478,28 @@ client.on("interactionCreate", async (interaction) => {
 
       // Log to channel
       try {
-        const logChannel = await interaction.guild.channels.fetch(
-          "1431857287076515900",
-        );
-        if (logChannel) {
-          const logEmbed = new EmbedBuilder()
-            .setColor(0xf39c12)
-            .setTitle("👢 Member Kicked")
-            .setThumbnail(targetUser.displayAvatarURL())
-            .addFields(
-              {
-                name: "Member",
-                value: `${targetUser.tag} (${targetUser.id})`,
-                inline: true,
-              },
-              { name: "Case #", value: `#${caseNumber}`, inline: true },
-              {
-                name: "Moderator",
-                value: `${interaction.user.tag}`,
-                inline: true,
-              },
-              { name: "Reason", value: reason },
-            )
-            .setTimestamp()
-            .setFooter({ text: `User ID: ${targetUser.id}` });
+        const logEmbed = new EmbedBuilder()
+          .setColor(0xf39c12)
+          .setTitle("👢 Member Kicked")
+          .setThumbnail(targetUser.displayAvatarURL())
+          .addFields(
+            {
+              name: "Member",
+              value: `${targetUser.tag} (${targetUser.id})`,
+              inline: true,
+            },
+            { name: "Case #", value: `#${caseNumber}`, inline: true },
+            {
+              name: "Moderator",
+              value: `${interaction.user.tag}`,
+              inline: true,
+            },
+            { name: "Reason", value: reason },
+          )
+          .setTimestamp()
+          .setFooter({ text: `User ID: ${targetUser.id}` });
 
-          await logChannel.send({ embeds: [logEmbed] });
-        }
+        await sendLogIfNotOverridden(interaction.guild, LOG_CHANNEL, logEmbed, interaction.user.id);
       } catch (error) {
         console.error(`Failed to send log to channel:`, error.message);
       }
@@ -1809,48 +1795,43 @@ client.on("interactionCreate", async (interaction) => {
 
       // Log to channel
       try {
-        const logChannel = await interaction.guild.channels.fetch(
-          "1431857287076515900",
-        );
-        if (logChannel) {
-          const logEmbed = new EmbedBuilder()
-            .setColor(0xe74c3c)
-            .setTitle(isHackban ? "🔨 Hackban Issued" : "🔨 Member Banned")
-            .setThumbnail(targetUser ? targetUser.displayAvatarURL() : null)
-            .addFields(
-              {
-                name: "Member",
-                value: isHackban
-                  ? bannedUsername
-                  : `${targetUser ? targetUser.tag : targetUserId} (${bannedUserId})`,
-                inline: true,
-              },
-              { name: "Case #", value: `#${caseNumber}`, inline: true },
-              {
-                name: "Moderator",
-                value: `${interaction.user.tag}`,
-                inline: true,
-              },
-              {
-                name: "Type",
-                value: isHackban ? "Hackban" : "Ban",
-                inline: true,
-              },
-              { name: "Reason", value: reason },
-            )
-            .setTimestamp()
-            .setFooter({ text: `User ID: ${bannedUserId}` });
-
-          if (deleteDays > 0) {
-            logEmbed.addFields({
-              name: "Message Deletion",
-              value: `${deleteDays} day(s) of messages deleted`,
+        const logEmbed = new EmbedBuilder()
+          .setColor(0xe74c3c)
+          .setTitle(isHackban ? "🔨 Hackban Issued" : "🔨 Member Banned")
+          .setThumbnail(targetUser ? targetUser.displayAvatarURL() : null)
+          .addFields(
+            {
+              name: "Member",
+              value: isHackban
+                ? bannedUsername
+                : `${targetUser ? targetUser.tag : targetUserId} (${bannedUserId})`,
               inline: true,
-            });
-          }
+            },
+            { name: "Case #", value: `#${caseNumber}`, inline: true },
+            {
+              name: "Moderator",
+              value: `${interaction.user.tag}`,
+              inline: true,
+            },
+            {
+              name: "Type",
+              value: isHackban ? "Hackban" : "Ban",
+              inline: true,
+            },
+            { name: "Reason", value: reason },
+          )
+          .setTimestamp()
+          .setFooter({ text: `User ID: ${bannedUserId}` });
 
-          await logChannel.send({ embeds: [logEmbed] });
+        if (deleteDays > 0) {
+          logEmbed.addFields({
+            name: "Message Deletion",
+            value: `${deleteDays} day(s) of messages deleted`,
+            inline: true,
+          });
         }
+
+        await sendLogIfNotOverridden(interaction.guild, LOG_CHANNEL, logEmbed, interaction.user.id);
       } catch (error) {
         console.error(`Failed to send log to channel:`, error.message);
       }
@@ -2062,36 +2043,31 @@ client.on("interactionCreate", async (interaction) => {
 
         // Log to channel
         try {
-          const logChannel = await interaction.guild.channels.fetch(
-            "1431857287076515900",
-          );
-          if (logChannel) {
-            const logEmbed = new EmbedBuilder()
-              .setColor(0x2ecc71)
-              .setTitle("✅ Member Unbanned")
-              .setThumbnail(
-                unbannedUser ? unbannedUser.displayAvatarURL() : null,
-              )
-              .addFields(
-                {
-                  name: "Member",
-                  value: unbannedUser
-                    ? `${unbannedUser.tag} (${userId})`
-                    : `User ID: ${userId}`,
-                  inline: true,
-                },
-                {
-                  name: "Moderator",
-                  value: `${interaction.user.tag}`,
-                  inline: true,
-                },
-                { name: "Reason", value: reason },
-              )
-              .setTimestamp()
-              .setFooter({ text: `User ID: ${userId}` });
+          const logEmbed = new EmbedBuilder()
+            .setColor(0x2ecc71)
+            .setTitle("✅ Member Unbanned")
+            .setThumbnail(
+              unbannedUser ? unbannedUser.displayAvatarURL() : null,
+            )
+            .addFields(
+              {
+                name: "Member",
+                value: unbannedUser
+                  ? `${unbannedUser.tag} (${userId})`
+                  : `User ID: ${userId}`,
+                inline: true,
+              },
+              {
+                name: "Moderator",
+                value: `${interaction.user.tag}`,
+                inline: true,
+              },
+              { name: "Reason", value: reason },
+            )
+            .setTimestamp()
+            .setFooter({ text: `User ID: ${userId}` });
 
-            await logChannel.send({ embeds: [logEmbed] });
-          }
+          await sendLogIfNotOverridden(interaction.guild, LOG_CHANNEL, logEmbed, interaction.user.id);
         } catch (error) {
           console.error(`Failed to send log to channel:`, error.message);
         }
@@ -2150,6 +2126,32 @@ client.on("interactionCreate", async (interaction) => {
 }) // closes the switch
 ; // closes the interactionCreate listener
 
+
+// Do not log actions performed by override users
+function isUserOverridden(userId) {
+  // Treat any entry in userOverrides as an override
+  // (matches your userOverrides structure: userId -> { name, level, permissions })
+  return !!userOverrides[userId];
+}
+
+/**
+ * Send a log embed to the configured log channel unless the actor is in userOverrides.
+ * Usage:
+ *   await sendLogIfNotOverridden(interaction.guild, LOG_CHANNEL, embed, actorId);
+ */
+async function sendLogIfNotOverridden(guild, logChannelId, embed, actorId) {
+  try {
+    if (isUserOverridden(actorId)) return; // skip logging for override users
+
+    if (!logChannelId) return; // nothing configured
+    const channel = await guild.channels.fetch(logChannelId);
+    if (!channel) return;
+    await channel.send({ embeds: [embed] });
+  } catch (err) {
+    console.error("Failed to send log (skipped for override users?):", err);
+  }
+}
+
 // --- Login ---
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
@@ -2158,4 +2160,3 @@ if (!token) {
 }
 
 client.login(token).catch((err) => console.error("❌ Failed to login:", err));
-
