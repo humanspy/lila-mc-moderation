@@ -1302,7 +1302,7 @@ client.on("interactionCreate", async (interaction) => {
       const role = getHighestStaffRole(interaction.member);
       if (!role || role.level > 7) {
         return interaction.reply({
-          content: `❌ Only Trial Moderator rank and above can view override codes.`,
+          content: `❌ Only Moderator rank and above can view override codes.`,
           ephemeral: true,
         });
       }
@@ -1701,43 +1701,52 @@ client.on("interactionCreate", async (interaction) => {
       // Normal ban mode
       else {
         // Check if target is a staff member (for regular ban, not hackban)
+        // Check if target is a staff member (for regular ban, not hackban)
+// Allow if the actor is in userOverrides AND has 'ban' or 'all' permission there.
         try {
-          const targetMember =
-            await interaction.guild.members.fetch(targetUserId);
+          const targetMember = await interaction.guild.members.fetch(targetUserId);
           const targetStaffRole = getHighestStaffRole(targetMember);
-
+        
           if (targetStaffRole) {
-            const errorEmbed = new EmbedBuilder()
-              .setColor(0xe74c3c)
-              .setTitle("❌ Cannot Ban Staff Member")
-              .setDescription(
-                `**${targetUser ? targetUser.tag : targetUserId}** is a staff member and cannot be banned.`,
-              )
-              .addFields(
-                {
-                  name: "Target Role",
-                  value: targetStaffRole.name,
-                  inline: true,
-                },
-                {
-                  name: "Reason",
-                  value: "Staff members are immune to bans",
-                  inline: false,
-                },
-              )
-              .setTimestamp();
-
-            return interaction.reply({
-              embeds: [errorEmbed],
-              ephemeral: true,
-            });
+            // does the actor have an override that explicitly allows banning?
+            const actorOverride = userOverrides[interaction.user.id];
+            const actorPerms = actorOverride ? actorOverride.permissions : null;
+            const actorCanBan =
+              actorPerms === "all" ||
+              (Array.isArray(actorPerms) && actorPerms.includes("ban"));
+        
+            if (!actorCanBan) {
+              const errorEmbed = new EmbedBuilder()
+                .setColor(0xe74c3c)
+                .setTitle("❌ Cannot Ban Staff Member")
+                .setDescription(
+                  `**${targetUser ? targetUser.tag : targetUserId}** is a staff member and cannot be banned.`,
+                )
+                .addFields(
+                  {
+                    name: "Target Role",
+                    value: targetStaffRole.name,
+                    inline: true,
+                  },
+                  {
+                    name: "Reason",
+                    value: "Staff members are immune to bans",
+                    inline: false,
+                  },
+                )
+                .setTimestamp();
+        
+              return interaction.reply({
+                embeds: [errorEmbed],
+                ephemeral: true,
+              });
+            }
+        
+            // actorCanBan === true -> allowed to ban staff; continue
           }
         } catch (error) {
           // If we can't fetch the member, continue to try banning them anyway
         }
-
-        bannedUserId = targetUserId;
-        bannedUsername = targetUser ? targetUser.username : targetUserId;
 
         try {
           await interaction.guild.members.ban(targetUserId, {
