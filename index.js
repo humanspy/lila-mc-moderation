@@ -331,7 +331,7 @@ function hasPermission(member, commandName) {
   
   // make sure permissions is an array before checking includes
   return Array.isArray(highestRole.permissions) && highestRole.permissions.includes(commandName);
-
+}
 
 // --- Check moderator ---
 function isModerator(member) {
