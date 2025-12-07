@@ -40,17 +40,28 @@ const OVERRIDE_CODE_CHANNEL = "process.env.DISCORD_Channel_ID";
 
 // --- Staff role IDs and permissions ---
 const roleHierarchy = {
-  "process.env.DISCORD_Owner": { name: "Lila", level: 0, permissions: "all" },
-  "process.env.DISCORD_Manager": { name: "Manager", level: 1, permissions: "all" },
-  "process.env.DISCORD_Mods": { name: "Mods", level: 2, permissions: [ "warn", "case", "timeout"],
+  [process.env.DISCORD_Owner]: { name: "Lila", level: 0, permissions: "all" },
+  [process.env.DISCORD_Manager]: { name: "Manager", level: 1, permissions: "all" },
+  [process.env.DISCORD_Mods]: { name: "Mods", level: 2, permissions: [ "warn", "case", "timeout"],
   },
 };
 
-const staffRoleIds = Object.keys(roleHierarchy);
+const staffRoleIds = Object.keys(roleHierarchy).filter(Boolean);
 
-// --- Load warnings ---
-
-
+// --- User-Specific Permission Overrides ---
+const userOverrides = {
+  const userOverrides = {
+  [process.env.DISCORDBT_Owner]: {
+    name: "Bot Owner",
+    level: -1, // higher priority than any staff role
+    permissions: "all"
+  },
+  [process.env.DISCORDBT_COwner]: {
+    name: "Co Owner",
+    level: -1,
+    permissions: "all"
+  },
+};
 
 
 // --- Load & Save warnings (guild-scoped) ---
@@ -109,8 +120,6 @@ async function revertWarning(guildId, userId) {
   await saveWarnings(guildId, warnings);
   return true;
 }
-
-
 
 // --- Load & Save cases (guild-scoped) ---
 async function loadAllCases() {
@@ -291,26 +300,38 @@ function getHighestStaffRole(member) {
   let lowestLevel = Infinity;
 
   member.roles.cache.forEach((role) => {
-    if (roleHierarchy[role.id]) {
-      if (roleHierarchy[role.id].level < lowestLevel) {
-        lowestLevel = roleHierarchy[role.id].level;
-        highestRole = { id: role.id, ...roleHierarchy[role.id] };
+    const info = roleHierarchy[role.id];
+    if (info) {
+      if (info.level < lowestLevel) {
+        lowestLevel = info.level;
+        highestRole = { id: role.id, ...info };
       }
     }
   });
 
   return highestRole;
 }
-
 // --- Check if user has permission for command ---
 function hasPermission(member, commandName) {
+  // 1) user-specific overrides (take precedence)
+  const override = userOverrides[member.id];
+  if (override) {
+    if (Array.isArray(override)) {
+      if (override.includes("all") || override.includes(commandName)) return true;
+    } else if (typeof override === "string") {
+      if (override === "all" || override === commandName) return true;
+    }
+  }
+
+  // 2) role-hierarchy based permissions
   const highestRole = getHighestStaffRole(member);
   if (!highestRole) return false;
 
   if (highestRole.permissions === "all") return true;
+  
+  // make sure permissions is an array before checking includes
+  return Array.isArray(highestRole.permissions) && highestRole.permissions.includes(commandName);
 
-  return highestRole.permissions.includes(commandName);
-}
 
 // --- Check moderator ---
 function isModerator(member) {
