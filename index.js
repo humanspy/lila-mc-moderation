@@ -541,13 +541,13 @@ client.once("clientReady", async () => {
   client.user.setPresence({
     activities: [
       {
-        name: "Managing SPY Group (SGI)",
+        name: "Serving LilaMC",
         type: 3,
       },
     ],
     status: "online",
   });
-  console.log(`🎮 Status set: Managing SPY Group (SGI)`);
+  console.log(`🎮 Status set: Serving LilaMC`);
 
   // Check for pending override codes on startup
   checkAndSendPendingOverrideCodes();
