@@ -507,8 +507,8 @@ client.once("clientReady", async () => {
   client.user.setPresence({
     activities: [
       {
-        name: "Managing SPY Group (SGI)",
-        type: 3,
+        name: "Serving LilaMC",
+        type: 2,
       },
     ],
     status: "online",
